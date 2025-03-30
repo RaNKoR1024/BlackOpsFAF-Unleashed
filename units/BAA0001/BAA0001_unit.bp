@@ -101,7 +101,7 @@ UnitBlueprint {
         },
     },
     Categories = {
-        'SELECTABLE',
+        'UNSELECTABLE',
         'AEON',
         'MOBILE',
         'AIR',

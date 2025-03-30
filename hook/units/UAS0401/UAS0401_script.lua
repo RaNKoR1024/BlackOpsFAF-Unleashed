@@ -193,27 +193,24 @@ UAS0401 = Class(BaseTransport, ASeaUnit, AirDroneCarrier) {
         ChangeState(self, self.DeadState)
         --Immediately kill existing drones
         self:KillAllDrones()
+        local nrofBones = self:GetBoneCount() -1
+        local watchBone = self:GetBlueprint().WatchBone or 0
 
-        local watchBone = self.Blueprint.WatchBone or 0
-        local trash = self.Trash
-
-        TrashBagAdd(trash, ForkThread(
-            function()
-                local pos = self:GetPosition()
-                local seafloor = GetTerrainHeight(pos[1], pos[3]) + GetTerrainTypeOffset(pos[1], pos[3])
-                while self:GetPosition(watchBone)[2] > seafloor do
-                    WaitSeconds(0.1)
-                end
-                self:CreateWreckage(overkillRatio, instigator)
-                self:Destroy()
+         self:ForkThread(function()
+            local pos = self:GetPosition()
+            local seafloor = GetTerrainHeight(pos[1], pos[3]) + GetTerrainTypeOffset(pos[1], pos[3])
+            while self:GetPosition(watchBone)[2] > seafloor do
+                WaitSeconds(0.1)
             end
-        ))
+            self:CreateWreckage(overkillRatio, instigator)
+            self:Destroy()
+        end)
 
         local layer = self:GetCurrentLayer()
         self:DestroyIdleEffects()
         if (layer == 'Water' or layer == 'Seabed' or layer == 'Sub') then
-            self.SinkExplosionThread = TrashBagAdd(trash, ForkThread(self.ExplosionThread,self))
-            self.SinkThread = TrashBagAdd(trash, ForkThread(self.SinkThread,self))
+            self.SinkExplosionThread = self:ForkThread(self.ExplosionThread)
+            self.SinkThread = self:ForkThread(self.SinkingThread)
         end
         ASeaUnit.OnKilled(self, instigator, type, overkillRatio)
     end,

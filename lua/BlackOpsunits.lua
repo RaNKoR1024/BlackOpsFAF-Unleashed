@@ -41,6 +41,9 @@ AirDroneCarrier = Class() {
             self.DroneData[droneName].Damaged = false
             self.DroneData[droneName].BuildProgress = 1
             self.Trash:Add(newdrone)
+            local newDroneUnit = {newdrone}
+            IssueClearCommands(newDroneUnit)
+            IssueGuard(newDroneUnit, self)
             self:RequestRefreshUI()
         end
     end,
@@ -268,6 +271,7 @@ AirDroneCarrier = Class() {
         local SuspendAssist = 0
         local LastFireState
         local LastDroneTarget
+        local IsGuarded = false
         -- The DroneCarrier's current weapon target is now used for better, earlier drone deployment
         -- Best results achieved so far have been with the missile launcher, due to range
         local TargetWeapon = self:GetWeapon(1)
@@ -329,6 +333,7 @@ AirDroneCarrier = Class() {
 
                 -- Assign chosen target, if valid
                 if NewDroneTarget and self:IsValidDroneTarget(NewDroneTarget) then
+                    IsGuarded = false
                     if NewDroneTarget == GunshipTarget then
                         -- Suspend the assist targeting for 7 heartbeats if we have a gunship target, to keep them at top priority
                         SuspendAssist = 7
@@ -339,6 +344,7 @@ AirDroneCarrier = Class() {
                 else
                     if LastDroneTarget and self:IsValidDroneTarget(LastDroneTarget)
                     and self:IsTargetInRange(LastDroneTarget) then
+                        IsGuarded = false
                         -- Dispatch any docked (usually newly-built) drones, if it's still valid
                         if self:GetDronesDocked() then
                             self:AssignDroneTarget(LastDroneTarget)
@@ -346,6 +352,14 @@ AirDroneCarrier = Class() {
                     else
                         -- Clear last target if no longer valid, forcing re-acquisition on the next beat
                         LastDroneTarget = nil
+                        if not IsGuarded and next(self.DroneTable or {}) then
+                            for id, drone in self.DroneTable do
+                                local droneUnit = {drone}
+                                IssueClearCommands(droneUnit)
+                                IssueGuard(droneUnit, self)
+                            end
+                            IsGuarded = true
+                        end
                     end
                 end
 
@@ -579,12 +593,14 @@ AirDroneUnit = Class(AirUnit) {
             self.WeaponsDisabled = true
         end
         -- Halt the drone and clear its orders - the drone will immediately attempt to return
-        IssueStop({self})
-        IssueClearCommands({self})
+        local selfUnit = { self }
+        IssueStop(selfUnit)
+        IssueClearCommands(selfUnit)
+        IssueGuard(selfUnit, self.Carrier)
         -- Lock the drone's command input until it's back in the specified control range
-        for k, cap in self.CapTable do
-            self:RemoveCommandCap(cap)
-        end
+        --for k, cap in self.CapTable do
+        --    self:RemoveCommandCap(self, cap)
+        --end
     end,
 
     -- Cancels drone lockdown and returns it to normal speed
@@ -605,6 +621,6 @@ AirDroneUnit = Class(AirUnit) {
             self.WeaponsDisabled = false
         end
         -- Cancel drone lockdown, re-enable command caps
-        self:RestoreCommandCaps()
+        --self:RestoreCommandCaps()
     end,
 }
