@@ -1,0 +1,7 @@
+UnitBlueprint{
+    Merge = true,
+    BlueprintId="xeb2402",
+    Economy = {
+        BuildableCategory = { "xea0002" },
+    },
+}
